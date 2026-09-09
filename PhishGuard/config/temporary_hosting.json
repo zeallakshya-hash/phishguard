@@ -1,0 +1,52 @@
+{
+    "providers": [
+        {
+            "domain": "trycloudflare.com",
+            "name": "Cloudflare Quick Tunnel"
+        },
+        {
+            "domain": "ngrok.io",
+            "name": "Ngrok"
+        },
+        {
+            "domain": "ngrok-free.app",
+            "name": "Ngrok Free"
+        },
+        {
+            "domain": "loca.lt",
+            "name": "Localtunnel"
+        },
+        {
+            "domain": "localtunnel.me",
+            "name": "Localtunnel"
+        },
+        {
+            "domain": "serveo.net",
+            "name": "Serveo"
+        },
+        {
+            "domain": "localhost.run",
+            "name": "Localhost.run"
+        },
+        {
+            "domain": "telebit.io",
+            "name": "Telebit"
+        },
+        {
+            "domain": "pinggy.link",
+            "name": "Pinggy"
+        },
+        {
+            "domain": "bore.pub",
+            "name": "Bore"
+        },
+        {
+            "domain": "tunnelto.dev",
+            "name": "Tunnelto"
+        },
+        {
+            "domain": "pagekite.me",
+            "name": "Pagekite"
+        }
+    ]
+}
