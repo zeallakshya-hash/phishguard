@@ -56,6 +56,42 @@ def calculate_score(url):
     Evaluates the URL across all analyzers, calculates a weighted risk score,
     and returns a verdict along with the breakdown.
     """
+    import urllib.parse
+    domain = urllib.parse.urlparse(url).netloc.lower()
+    
+    # Whitelist trusted domains (like our own hosting)
+    if domain in ["phishguard-pearl.vercel.app", "127.0.0.1:5000", "localhost:5000"]:
+        return {
+            'total_score': 0,
+            'risk_level': 'Low',
+            'triggered_rules': [],
+            'url': url,
+            'score': 0,
+            'category_scores': {'url': 0, 'domain': 0, 'content': 0},
+            'verdict': 'Legitimate',
+            'details': {},
+            'risk_score': 0,
+            'classification': 'SAFE',
+            'domain_analysis': {
+                'hostname': domain,
+                'registered_domain': domain,
+                'domain_age_days': None,
+                'domain_age_status': 'UNKNOWN',
+                'risk_points': 0
+            },
+            'temporary_hosting': {
+                'detected': False,
+                'provider': None,
+                'risk_points': 0
+            },
+            'subdomain_analysis': {
+                'subdomain': '',
+                'random_or_generated': False,
+                'risk_points': 0
+            },
+            'reasons': ["Domain is explicitly whitelisted."],
+            'simple_triggered_rules': []
+        }
     
     # Run all analyzers
     url_results = analyze_url(url)
