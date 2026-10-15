@@ -58,5 +58,9 @@ def analyze():
 def get_history():
     return jsonify(scan_history)
 
+@app.route('/google458fcac4455a9d14.html')
+def google_verification():
+    return "google-site-verification: google458fcac4455a9d14.html", 200, {'Content-Type': 'text/html; charset=utf-8'}
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True, port=5000)
