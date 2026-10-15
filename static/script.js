@@ -1,4 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // Initial scan history load
+    loadHistory();
+
     // --- Navigation / Tabs Logic ---
     const navItems = document.querySelectorAll('.nav-item');
     const tabPanes = document.querySelectorAll('.tab-pane');
@@ -20,11 +23,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     pane.classList.remove('active');
                 }
             });
-
-            // Special handling for history tab
-            if (targetTab === 'tab-history') {
-                loadHistory();
-            }
         });
     });
 
@@ -65,9 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'content_unreachable': 'Page Content Unreachable (Timeout/Blocked)',
         'connection_blocked_by_antivirus': 'Connection Blocked by Endpoint Antivirus',
         'google_safe_browsing_flagged': 'Flagged by Google Safe Browsing',
-        'phishtank_flagged': 'Flagged by PhishTank',
         'virustotal_flagged': 'Flagged by VirusTotal',
-        'urlhaus_flagged': 'Flagged by URLhaus Database',
         'tunneling_service': 'Suspicious Tunneling Service / Temporary Hosting',
         'random_subdomain': 'Random / Generated Subdomain',
         'semantic_keywords': 'Credential-Harvesting Semantic Keywords',
@@ -107,9 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'content_unreachable': contentFeaturesList,
         'connection_blocked_by_antivirus': contentFeaturesList,
         'google_safe_browsing_flagged': domainFeaturesList,
-        'phishtank_flagged': domainFeaturesList,
         'virustotal_flagged': domainFeaturesList,
-        'urlhaus_flagged': urlFeaturesList,
         'tunneling_service': urlFeaturesList,
         'random_subdomain': urlFeaturesList,
         'semantic_keywords': urlFeaturesList,
@@ -140,10 +134,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // UI Reset & Loading State
         errorMessage.classList.add('hidden');
-        resultsContainer.classList.add('hidden');
+        if (resultsContainer) resultsContainer.classList.add('hidden');
         btnText.classList.add('hidden');
         spinner.classList.remove('hidden');
         scanBtn.disabled = true;
+
+        if (verdictTitle) verdictTitle.textContent = "Analyzing...";
+        if (verdictDesc) verdictDesc.textContent = "Evaluating threat indicators and heuristic models.";
+        if (riskScoreEl) riskScoreEl.textContent = "...";
+        if (scoreRingProgress) scoreRingProgress.style.strokeDashoffset = 408;
 
         try {
             const response = await fetch('/analyze', {
@@ -168,6 +167,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 errorMessage.textContent = error.message;
             }
             errorMessage.classList.remove('hidden');
+            if (verdictTitle) verdictTitle.textContent = "Ready";
+            if (verdictDesc) verdictDesc.textContent = "Awaiting valid URL to analyze.";
+            if (riskScoreEl) riskScoreEl.textContent = "0";
         } finally {
             // Revert Loading State
             btnText.classList.remove('hidden');
@@ -185,15 +187,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (data.verdict === 'Phishing' || data.verdict === 'Critical') {
             verdictCard.classList.add('verdict-phishing');
             verdictDesc.textContent = "Critical threat indicators detected. Do not proceed.";
-            scoreRingProgress.style.stroke = "var(--threat-high)";
+            scoreRingProgress.style.stroke = "var(--status-phishing)";
         } else if (data.verdict === 'Suspicious') {
             verdictCard.classList.add('verdict-suspicious');
             verdictDesc.textContent = "Multiple risk factors present. Proceed with extreme caution.";
-            scoreRingProgress.style.stroke = "var(--threat-med)";
+            scoreRingProgress.style.stroke = "var(--status-suspicious)";
         } else {
             verdictCard.classList.add('verdict-legitimate');
             verdictDesc.textContent = "No significant threat indicators detected.";
-            scoreRingProgress.style.stroke = "var(--threat-low)";
+            scoreRingProgress.style.stroke = "var(--status-safe)";
         }
 
         // Clear previous lists
@@ -207,8 +209,14 @@ document.addEventListener('DOMContentLoaded', () => {
             reasonsList.innerHTML = '';
             if (data.reasons && data.reasons.length > 0) {
                 data.reasons.forEach(reason => {
+                    const isSafeReason = data.score === 0 || /allowlist|whitelist|legitimate|verified/i.test(reason);
+                    const iconColor = isSafeReason ? 'var(--threat-low)' : 'var(--threat-high)';
+                    const iconSvg = isSafeReason
+                        ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: ${iconColor}"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`
+                        : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: ${iconColor}"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`;
+                    
                     const li = document.createElement('li');
-                    li.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--threat-high)"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> ${reason}`;
+                    li.innerHTML = `${iconSvg} ${reason}`;
                     reasonsList.appendChild(li);
                 });
             } else {
@@ -270,7 +278,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         renderChart(data.category_scores);
-        resultsContainer.classList.remove('hidden');
+        if (resultsContainer) resultsContainer.classList.remove('hidden');
+        loadHistory();
     }
 
     function renderChart(categoryScores) {
@@ -297,16 +306,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     label: 'Risk Score Allocation',
                     data: displayData,
                     backgroundColor: [
-                        'rgba(59, 130, 246, 0.6)',  // Blue
-                        'rgba(139, 92, 246, 0.6)',  // Purple
-                        'rgba(236, 72, 153, 0.6)'   // Pink
+                        'rgba(119, 153, 85, 0.75)',   // Asparagus Green
+                        'rgba(143, 188, 143, 0.75)',  // Dark Sea Green
+                        'rgba(172, 225, 175, 0.75)'   // Celadon
                     ],
                     borderColor: [
-                        'rgba(59, 130, 246, 1)',
-                        'rgba(139, 92, 246, 1)',
-                        'rgba(236, 72, 153, 1)'
+                        'rgba(85, 117, 53, 1)',       // Asparagus Deep
+                        'rgba(63, 110, 77, 1)',       // Dark Sea Green Deep
+                        'rgba(115, 179, 120, 1)'      // Celadon Deep
                     ],
-                    borderWidth: 1
+                    borderWidth: 1.5
                 }]
             },
             options: {
@@ -315,17 +324,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 scales: {
                     r: {
                         ticks: { display: false, max: 100 },
-                        grid: { color: 'rgba(255, 255, 255, 0.1)' },
-                        angleLines: { color: 'rgba(255, 255, 255, 0.1)' }
+                        grid: { color: 'rgba(143, 188, 143, 0.28)' },
+                        angleLines: { color: 'rgba(143, 188, 143, 0.28)' }
                     }
                 },
                 plugins: {
                     legend: {
                         position: 'right',
                         labels: {
-                            color: '#94a3b8',
+                            color: '#18311e', // Deep Forest Asparagus for light theme
                             font: {
-                                family: 'Inter'
+                                family: 'Inter',
+                                size: 12,
+                                weight: '600'
                             }
                         }
                     },
@@ -371,43 +382,102 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- History Logic ---
     async function loadHistory() {
-        const tbody = document.getElementById('history-body');
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 2rem; color: var(--text-tertiary);">Loading history...</td></tr>';
+        const bodies = document.querySelectorAll('.history-body-container');
+        if (bodies.length === 0) {
+            const single = document.getElementById('history-body');
+            if (single) single.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 2rem; color: var(--text-tertiary);">Loading history...</td></tr>';
+        } else {
+            bodies.forEach(b => {
+                b.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 2rem; color: var(--text-tertiary);">Loading history...</td></tr>';
+            });
+        }
         
         try {
             const response = await fetch('/api/history');
             const history = await response.json();
             
+            const targetBodies = bodies.length > 0 ? Array.from(bodies) : [document.getElementById('history-body')].filter(Boolean);
+
             if (history.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 2rem; color: var(--text-tertiary);">No scans performed yet.</td></tr>';
+                targetBodies.forEach(b => {
+                    b.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 2rem; color: var(--text-tertiary);">No scans performed yet.</td></tr>';
+                });
                 return;
             }
             
-            tbody.innerHTML = '';
-            history.forEach(scan => {
-                const tr = document.createElement('tr');
-                
-                let verdictBadge = '';
-                if (scan.verdict === 'Phishing') {
-                    verdictBadge = '<span class="badge badge-critical">Phishing</span>';
-                } else if (scan.verdict === 'Suspicious') {
-                    verdictBadge = '<span class="badge badge-med">Suspicious</span>';
-                } else {
-                    verdictBadge = '<span class="badge badge-low">Legitimate</span>';
-                }
+            targetBodies.forEach(b => {
+                b.innerHTML = '';
+                history.forEach(scan => {
+                    const tr = document.createElement('tr');
+                    
+                    let verdictBadge = '';
+                    if (scan.verdict === 'Phishing' || scan.verdict === 'Critical') {
+                        verdictBadge = '<span class="badge badge-critical">Phishing</span>';
+                    } else if (scan.verdict === 'Suspicious') {
+                        verdictBadge = '<span class="badge badge-med">Suspicious</span>';
+                    } else {
+                        verdictBadge = '<span class="badge badge-low">Legitimate</span>';
+                    }
 
-                tr.innerHTML = `
-                    <td class="timestamp-cell">${scan.timestamp}</td>
-                    <td class="url-cell" title="${scan.url}">${scan.url}</td>
-                    <td class="score-cell">${scan.score}</td>
-                    <td>${verdictBadge}</td>
-                `;
-                tbody.appendChild(tr);
+                    tr.innerHTML = `
+                        <td class="timestamp-cell">${scan.timestamp}</td>
+                        <td class="url-cell" title="${scan.url}">${scan.url}</td>
+                        <td class="score-cell">${scan.score}</td>
+                        <td>${verdictBadge}</td>
+                    `;
+                    b.appendChild(tr);
+                });
             });
             
         } catch (error) {
             console.error('Failed to load history:', error);
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 2rem; color: var(--threat-high);">Failed to load history.</td></tr>';
+            const targetBodies = bodies.length > 0 ? Array.from(bodies) : [document.getElementById('history-body')].filter(Boolean);
+            targetBodies.forEach(b => {
+                b.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 2rem; color: var(--status-phishing);">Failed to load history.</td></tr>';
+            });
         }
+    }
+
+    // --- "Why it get flagged" Modal Logic ---
+    const detailsModal = document.getElementById('details-modal');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    const btnWhyFlagged = document.getElementById('btn-why-flagged');
+    const btnWhyFlaggedTable = document.getElementById('btn-why-flagged-table');
+
+    function openDetailsModal() {
+        if (!detailsModal) return;
+        detailsModal.classList.add('active');
+        if (riskChart) {
+            setTimeout(() => {
+                riskChart.resize();
+            }, 50);
+        }
+    }
+
+    function closeDetailsModal() {
+        if (!detailsModal) return;
+        detailsModal.classList.remove('active');
+    }
+
+    if (btnWhyFlagged) {
+        btnWhyFlagged.addEventListener('click', openDetailsModal);
+    }
+    if (btnWhyFlaggedTable) {
+        btnWhyFlaggedTable.addEventListener('click', openDetailsModal);
+    }
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', closeDetailsModal);
+    }
+    if (detailsModal) {
+        detailsModal.addEventListener('click', (e) => {
+            if (e.target === detailsModal) {
+                closeDetailsModal();
+            }
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && detailsModal.classList.contains('active')) {
+                closeDetailsModal();
+            }
+        });
     }
 });

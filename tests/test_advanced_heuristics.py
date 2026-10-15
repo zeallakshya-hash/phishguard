@@ -1,5 +1,12 @@
 import unittest
-from rules.url_analyzer import check_url_concatenation, check_idn_homograph, check_obfuscated_ip
+from unittest.mock import patch
+from rules.url_analyzer import (
+    check_url_concatenation,
+    check_idn_homograph,
+    check_obfuscated_ip,
+    check_tunneling_service
+)
+from engine.scoring import calculate_score
 
 class TestAdvancedURLHeuristics(unittest.TestCase):
     
@@ -46,5 +53,39 @@ class TestAdvancedURLHeuristics(unittest.TestCase):
         self.assertTrue(check_obfuscated_ip("https://google\u200B.com"))
         self.assertTrue(check_obfuscated_ip("https://pay\u200Cpal.com"))
 
+    def test_check_tunneling_service(self):
+        # Known tunneling services
+        res_cf = check_tunneling_service("https://subdomain.trycloudflare.com/path")
+        self.assertTrue(res_cf['detected'])
+        self.assertEqual(res_cf['provider'], "Cloudflare Quick Tunnel")
+
+        res_ngrok = check_tunneling_service("http://xyz.ngrok-free.app/login")
+        self.assertTrue(res_ngrok['detected'])
+        self.assertEqual(res_ngrok['provider'], "Ngrok Free")
+
+        res_localtunnel = check_tunneling_service("https://demo.loca.lt")
+        self.assertTrue(res_localtunnel['detected'])
+        self.assertEqual(res_localtunnel['provider'], "Localtunnel")
+
+        # Legitimate / non-tunnel URLs
+        res_legit = check_tunneling_service("https://google.com")
+        self.assertFalse(res_legit['detected'])
+        self.assertIsNone(res_legit['provider'])
+
+    @patch('engine.scoring.analyze_cloaking', return_value={})
+    @patch('engine.scoring.analyze_content', return_value={})
+    @patch('engine.scoring.analyze_domain', return_value={'domain_age_info': {}})
+    @patch('engine.scoring.analyze_api', return_value={'google_safe_browsing_flagged': False, 'virustotal_flagged': False})
+    def test_tunneling_scoring_points(self, mock_api, mock_domain, mock_content, mock_cloaking):
+        result = calculate_score("https://test-host.trycloudflare.com")
+        self.assertEqual(result['temporary_hosting']['risk_points'], 30)
+        self.assertTrue(result['temporary_hosting']['detected'])
+        self.assertGreaterEqual(result['score'], 30)
+        self.assertEqual(result['verdict'], 'Suspicious')
+        tunnel_rule = next((r for r in result['triggered_rules'] if r['rule_name'] == 'tunneling_service'), None)
+        self.assertIsNotNone(tunnel_rule)
+        self.assertEqual(tunnel_rule['score_added'], 30)
+
 if __name__ == '__main__':
     unittest.main()
+

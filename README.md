@@ -28,7 +28,6 @@ PhishGuard integrates with external APIs to enhance detection. Create a `.env` f
 
 ```ini
 GOOGLE_SAFE_BROWSING_API_KEY=your_google_api_key_here
-PHISHTANK_API_KEY=your_phishtank_api_key_here
 VIRUSTOTAL_API_KEY=your_virustotal_api_key_here
 ```
 If these keys are not provided, PhishGuard will gracefully fall back to using only its local heuristic engine.

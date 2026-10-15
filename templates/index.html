@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhishGuard | Next-Gen Phishing Detection</title>
+    <meta name="description" content="PhishGuard analyzes URLs in real-time to detect phishing sites using advanced heuristics and threat intelligence.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="ambient-background">
+        <div class="sunlight-source"></div>
+        <div class="sunbeam ray-1"></div>
+        <div class="sunbeam ray-2"></div>
+        <div class="sunbeam ray-3"></div>
+        <div class="sunbeam ray-4"></div>
+        <div class="ambient-orb orb-primary"></div>
+        <div class="ambient-orb orb-secondary"></div>
+        <div class="ambient-orb orb-accent"></div>
+    </div>
+    
+    <!-- Big Box Lines Watermark Background Layer -->
+    <div class="watermark-grid-layer" aria-hidden="true">
+        <div class="watermark-box box-frame-tr">
+            <div class="box-corner tl"></div>
+            <div class="box-corner tr"></div>
+            <div class="box-corner bl"></div>
+            <div class="box-corner br"></div>
+            <div class="box-meta">
+                <span class="box-code">SOLAR-GRID // 120x120</span>
+                <span class="box-coords">SEC-01 • SUNLIGHT TELEMETRY</span>
+            </div>
+        </div>
+        <div class="watermark-box box-frame-bl">
+            <div class="box-corner tl"></div>
+            <div class="box-corner tr"></div>
+            <div class="box-corner bl"></div>
+            <div class="box-corner br"></div>
+            <div class="box-meta">
+                <span class="box-code">HEURISTICS // ZONE-DAWN</span>
+                <span class="box-coords">TRANCO-10K • ACTIVE</span>
+            </div>
+        </div>
+        <div class="watermark-box box-frame-cr">
+            <div class="box-corner tl"></div>
+            <div class="box-corner tr"></div>
+            <div class="box-corner bl"></div>
+            <div class="box-corner br"></div>
+            <div class="box-meta">
+                <span class="box-code">PHISHGUARD // RADIANT-CORE</span>
+                <span class="box-coords">SAFETY ILLUMINATED</span>
+            </div>
+        </div>
+    </div>
+    <div class="noise-overlay"></div>
+
+    <div class="dashboard-wrapper">
+        <!-- Top Navigation Bar -->
+        <header class="top-nav glass-panel">
+            <div class="top-nav-inner">
+                <div class="nav-brand">
+                    <div class="logo-wrapper">
+                        <svg class="logo-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                            <path d="M9 12l2 2 4-4"></path>
+                        </svg>
+                        <span>SECURE ENGINE</span>
+                    </div>
+                    <h1>PhishGuard</h1>
+                </div>
+                
+                <nav class="nav-menu">
+                    <button class="nav-item active" data-tab="tab-scanner">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        <span>Threat Scanner</span>
+                    </button>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="dashboard-content">
+            
+            <!-- Scanner Tab -->
+            <div id="tab-scanner" class="tab-pane active">
+                <header class="tab-header tab-header-scanner">
+                    <div class="tab-header-text">
+                        <div class="header-status-badge">
+                            <span class="status-pulse-dot"></span>
+                            <span>HEURISTIC ENGINE ACTIVE • TRANCO VERIFIED</span>
+                        </div>
+                        <h2>URL Threat Scanner</h2>
+                        <p class="subtitle">Enter a URL to evaluate threat indicators and heuristic models.</p>
+                    </div>
+
+                    <div class="verdict-card glass-panel" id="verdict-card">
+                        <div class="score-display">
+                            <div class="score-ring">
+                                <svg viewBox="0 0 140 140">
+                                    <circle class="ring-bg" cx="70" cy="70" r="65"></circle>
+                                    <circle class="ring-progress" id="score-ring-progress" cx="70" cy="70" r="65"></circle>
+                                </svg>
+                            </div>
+                            <div class="score-content">
+                                <span id="risk-score">0</span>
+                                <span class="score-label">Risk Level</span>
+                            </div>
+                        </div>
+                        <div class="verdict-details">
+                            <h2 id="verdict-title">Ready</h2>
+                            <p id="verdict-desc">Awaiting target URL input to evaluate risk.</p>
+                            <button type="button" class="btn-why-flagged" id="btn-why-flagged">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                                Why it get flagged
+                            </button>
+                        </div>
+                    </div>
+                </header>
+
+                <section class="scanner-card glass-panel">
+                    <form id="scan-form" class="scan-form">
+                        <div class="input-group">
+                            <div class="input-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            </div>
+                            <input type="url" id="url-input" placeholder="https://example.com" required autocomplete="off" spellcheck="false">
+                            <button type="submit" id="scan-btn" class="btn-primary">
+                                <span class="btn-text">Analyze Target</span>
+                                <div class="spinner hidden"></div>
+                            </button>
+                        </div>
+                        <p id="error-message" class="error-message hidden">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                            <span id="error-text">An error occurred.</span>
+                        </p>
+                    </form>
+                </section>
+
+                <!-- Scan History Section (In place of Details Section) -->
+                <section class="history-card glass-panel" style="margin-top: 1rem;">
+                    <div class="history-header">
+                        <div class="history-header-left">
+                            <h3 style="font-size: 1.35rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.6rem; margin: 0;">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                                Recent Scan History
+                            </h3>
+                            <span class="history-subtitle" style="color: var(--text-secondary); font-size: 0.88rem; margin-top: 0.25rem; display: block;">Historical logs of analyzed URLs, risk scores, and security verdicts.</span>
+                        </div>
+                        <button type="button" class="btn-why-flagged btn-secondary-flagged" id="btn-why-flagged-table">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                            Why it get flagged
+                        </button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="history-table">
+                            <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>Target URL</th>
+                                    <th>Risk Score</th>
+                                    <th>Verdict</th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-body" class="history-body-container">
+                                <tr>
+                                    <td colspan="4" style="text-align: center; padding: 2rem; color: var(--text-tertiary);">Loading history...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- Details Modal: "Why it get flagged" -->
+        <div id="details-modal" class="modal-overlay">
+            <div class="modal-container glass-panel">
+                <div class="modal-header">
+                    <div class="modal-title-group">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                            <path d="M9 12l2 2 4-4"></path>
+                        </svg>
+                        <h3>Why It Got Flagged &mdash; Threat Telemetry</h3>
+                    </div>
+                    <button type="button" id="close-modal-btn" class="modal-close-btn" aria-label="Close dialog">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="modal-body">
+                    <!-- Explainable Reasons & Technical Details -->
+                    <div class="explainable-card glass-panel" id="explainable-card" style="margin-bottom: 2rem;">
+                        <h3>
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                            Detection Reasons & Technical Details
+                        </h3>
+                        
+                        <div class="explainable-content" style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 1rem;">
+                            <div class="reasons-list">
+                                <h4 style="color: #94a3b8; font-size: 0.875rem; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em;">Detection Reasons</h4>
+                                <ul id="reasons-list" class="feature-list"></ul>
+                            </div>
+                            
+                            <div class="technical-details">
+                                <h4 style="color: #94a3b8; font-size: 0.875rem; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em;">Technical Details</h4>
+                                <ul class="details-list" style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.75rem;">
+                                    <li style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;"><strong>Registered Domain:</strong> <span id="detail-registered-domain" style="color: var(--text-secondary);"></span></li>
+                                    <li style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;"><strong>Domain Age:</strong> <span id="detail-domain-age" style="color: var(--text-secondary);"></span></li>
+                                    <li style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;"><strong>Temporary Host:</strong> <span id="detail-temporary-host" style="color: var(--text-secondary);"></span></li>
+                                    <li style="display: flex; justify-content: space-between; padding-bottom: 0.5rem;"><strong>Random Subdomain:</strong> <span id="detail-random-subdomain" style="color: var(--text-secondary);"></span></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Threat Telemetry Breakdown & Polar Chart -->
+                    <div class="breakdown-card glass-panel">
+                        <h3>
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                            Threat Telemetry Breakdown
+                        </h3>
+                        
+                        <div class="chart-container" style="position: relative; height:300px; width:100%; margin-bottom: 2rem; display: flex; justify-content: center;">
+                            <canvas id="riskChart"></canvas>
+                        </div>
+
+                        <div class="features-grid">
+                            <div class="feature-category">
+                                <h4>URL Architecture</h4>
+                                <ul id="url-features" class="feature-list"></ul>
+                            </div>
+                            <div class="feature-category">
+                                <h4>Domain & Reputation</h4>
+                                <ul id="domain-features" class="feature-list"></ul>
+                            </div>
+                            <div class="feature-category">
+                                <h4>Page Content Integrity</h4>
+                                <ul id="content-features" class="feature-list"></ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

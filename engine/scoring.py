@@ -3,6 +3,7 @@ from rules.domain_analyzer import analyze_domain, get_domain
 from rules.content_analyzer import analyze_content
 from rules.api_analyzer import analyze_api
 from rules.cloaking_analyzer import analyze_cloaking
+from rules.allowlist import is_allowlisted, extract_etld_plus_one
 
 # Define risk weights for each heuristic
 WEIGHTS = {
@@ -17,6 +18,7 @@ WEIGHTS = {
     'high_risk_tld': 15,
     'non_standard_port': 15,
     'obfuscated_ip': 20,
+    'tunneling_service': 30,
     
     # Domain Features
     'young_domain': 25,
@@ -47,7 +49,6 @@ WEIGHTS = {
     
     # API Blacklists
     'google_safe_browsing_flagged': 100,
-    'phishtank_flagged': 100,
     'virustotal_flagged': 100
 }
 
@@ -93,20 +94,102 @@ def calculate_score(url):
             'simple_triggered_rules': []
         }
     
-    # Run all analyzers
+    # 1. Threat Intelligence Lookups (VirusTotal / Safe Browsing)
+    api_results = analyze_api(url)
+    is_threat_flagged = any(api_results.values())
+    
+    # Pipeline Rule: If external threat database flags URL, mark as Phishing (score = 100),
+    # regardless of whether it is allowlisted.
+    if is_threat_flagged:
+        triggered_rules = []
+        category_scores = {'url': 0, 'domain': 0, 'content': 0}
+        reasons = []
+        
+        for rule, flagged in api_results.items():
+            if flagged:
+                desc = f"Identified as malicious by threat intelligence: {rule.replace('_', ' ').title()}"
+                triggered_rules.append({
+                    'rule_name': rule,
+                    'score_added': 100,
+                    'description': desc
+                })
+                reasons.append(desc)
+                category_scores['domain'] += 100
+                    
+        root_domain = extract_etld_plus_one(url)
+        return {
+            'total_score': 100,
+            'risk_level': 'Critical',
+            'triggered_rules': triggered_rules,
+            'url': url,
+            'score': 100,
+            'category_scores': category_scores,
+            'verdict': 'Phishing',
+            'details': api_results,
+            'risk_score': 100,
+            'classification': 'PHISHING',
+            'domain_analysis': {
+                'hostname': domain,
+                'registered_domain': root_domain,
+                'domain_age_days': None,
+                'domain_age_status': 'FLAGGED_BY_INTEL',
+                'risk_points': 100
+            },
+            'temporary_hosting': {
+                'detected': False,
+                'provider': None,
+                'risk_points': 0
+            },
+            'subdomain_analysis': {
+                'subdomain': '',
+                'random_or_generated': False,
+                'risk_points': 0
+            },
+            'reasons': reasons,
+            'simple_triggered_rules': [r['rule_name'] for r in triggered_rules]
+        }
+
+    # 2. Pipeline Rule: If NOT flagged by threat intelligence, but is_allowlisted(url) is True,
+    # immediately return safe score (0 points) and skip all structural/content heuristic rules
+    if is_allowlisted(url):
+        root_domain = extract_etld_plus_one(url)
+        return {
+            'total_score': 0,
+            'risk_level': 'Low',
+            'triggered_rules': [],
+            'url': url,
+            'score': 0,
+            'category_scores': {'url': 0, 'domain': 0, 'content': 0},
+            'verdict': 'Legitimate',
+            'details': api_results,
+            'risk_score': 0,
+            'classification': 'SAFE',
+            'domain_analysis': {
+                'hostname': domain,
+                'registered_domain': root_domain,
+                'domain_age_days': None,
+                'domain_age_status': 'ALLOWLISTED',
+                'risk_points': 0
+            },
+            'temporary_hosting': {
+                'detected': False,
+                'provider': None,
+                'risk_points': 0
+            },
+            'subdomain_analysis': {
+                'subdomain': '',
+                'random_or_generated': False,
+                'risk_points': 0
+            },
+            'reasons': [f"Domain '{root_domain}' is verified in global top allowlist (Tranco Top 10k). All heuristic checks bypassed."],
+            'simple_triggered_rules': []
+        }
+
+    # 3. If NOT allowlisted, proceed with the normal heuristic evaluation pipeline
     url_results = analyze_url(url)
     domain_results = analyze_domain(url)
     content_results = analyze_content(url)
-    api_results = analyze_api(url)
     cloaking_results = analyze_cloaking(url)
-    
-    # Check urlhaus if it exists in url_analyzer (user added it)
-    from rules.url_analyzer import check_urlhaus
-    urlhaus_result = check_urlhaus(url)
-    if urlhaus_result.get('status') == 'Phishing/Malware':
-        api_results['urlhaus_flagged'] = True
-    else:
-        api_results['urlhaus_flagged'] = False
 
     # Extract the new detailed dicts so they don't break the boolean loop
     domain_age_info = domain_results.pop('domain_age_info', {})
@@ -139,17 +222,14 @@ def calculate_score(url):
     for rule, is_triggered in all_results.items():
         if is_triggered:
             weight = WEIGHTS.get(rule, 0)
-            if rule == 'urlhaus_flagged':
-                weight = 100
-                
             total_score += weight
             add_triggered_rule(rule, weight, f"Triggered check for {rule.replace('_', ' ').title()}")
             reasons.append(f"Triggered check for {rule.replace('_', ' ').title()}")
             
             # Add to category
-            if rule in url_results or rule == 'urlhaus_flagged':
+            if rule in url_results:
                 category_scores['url'] += weight
-            elif rule in domain_results or rule in ['google_safe_browsing_flagged', 'phishtank_flagged', 'virustotal_flagged']:
+            elif rule in domain_results or rule in ['google_safe_browsing_flagged', 'virustotal_flagged']:
                 category_scores['domain'] += weight
             elif rule in content_results or rule in cloaking_results:
                 category_scores['content'] += weight
@@ -177,7 +257,7 @@ def calculate_score(url):
     # Process Temporary Hosting
     tunnel_points = 0
     if tunneling_info.get('detected'):
-        tunnel_points = 15
+        tunnel_points = WEIGHTS.get('tunneling_service', 30)
         total_score += tunnel_points
         category_scores['url'] += tunnel_points
         add_triggered_rule('tunneling_service', tunnel_points, f"Temporary tunnel hosting detected: {tunneling_info.get('provider')}")
