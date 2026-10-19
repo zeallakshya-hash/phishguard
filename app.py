@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, send_from_directory
 import urllib.parse
 from dotenv import load_dotenv
 import os
@@ -61,6 +61,23 @@ def get_history():
 @app.route('/google458fcac4455a9d14.html')
 def google_verification():
     return "google-site-verification: google458fcac4455a9d14.html", 200, {'Content-Type': 'text/html; charset=utf-8'}
+
+@app.route('/manifest.json')
+def manifest():
+    return send_from_directory(os.path.join(app.root_path, 'public'), 'manifest.json', mimetype='application/manifest+json')
+
+@app.route('/sw.js')
+def service_worker():
+    response = send_from_directory(os.path.join(app.root_path, 'public'), 'sw.js', mimetype='application/javascript')
+    response.headers['Service-Worker-Allowed'] = '/'
+    return response
+
+@app.route('/<path:filename>')
+def serve_public(filename):
+    public_dir = os.path.join(app.root_path, 'public')
+    if os.path.isfile(os.path.join(public_dir, filename)):
+        return send_from_directory(public_dir, filename)
+    return jsonify({'error': 'Not found'}), 404
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True, port=5000)
